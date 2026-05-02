@@ -8,7 +8,7 @@ import {
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { Avatar, Input, Layout, Menu, Space, Typography } from 'antd';
+import { Avatar, Empty, Input, Layout, Menu, Space, Typography } from 'antd';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import DefectDetailPage from './pages/DefectDetailPage';
 import DefectListPage from './pages/DefectListPage';
@@ -52,9 +52,22 @@ const menuItems = [
   },
 ];
 
+function DemoPlaceholderPage() {
+  return (
+    <div className="center-state">
+      <Empty description="Demo 暂未实现" />
+    </div>
+  );
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+  const activeMenuKey = menuItems.some((item) => item.key === location.pathname)
+    ? location.pathname
+    : location.pathname.startsWith('/defects/')
+      ? '/workbench'
+      : '/defects';
 
   return (
     <Layout className="app-shell">
@@ -64,9 +77,9 @@ export default function App() {
         </div>
         <Menu
           mode="inline"
-          selectedKeys={[location.pathname.startsWith('/defects/') ? '/workbench' : '/defects']}
+          selectedKeys={[activeMenuKey]}
           items={menuItems}
-          onClick={({ key }) => navigate(key === '/workbench' ? '/defects' : key)}
+          onClick={({ key }) => navigate(key)}
         />
       </Sider>
       <Layout>
@@ -91,8 +104,14 @@ export default function App() {
         <Content className="app-content">
           <Routes>
             <Route path="/" element={<Navigate to="/defects" replace />} />
+            <Route path="/dashboard" element={<DemoPlaceholderPage />} />
             <Route path="/defects" element={<DefectListPage />} />
             <Route path="/defects/:id" element={<DefectDetailPage />} />
+            <Route path="/workbench" element={<DefectDetailPage />} />
+            <Route path="/ledger" element={<DemoPlaceholderPage />} />
+            <Route path="/dispatch" element={<DemoPlaceholderPage />} />
+            <Route path="/settings" element={<DemoPlaceholderPage />} />
+            <Route path="*" element={<DemoPlaceholderPage />} />
           </Routes>
         </Content>
       </Layout>

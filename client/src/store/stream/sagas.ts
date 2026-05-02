@@ -1,4 +1,4 @@
-import { call, cancel, cancelled, fork, put, take } from 'redux-saga/effects';
+import { call, cancel, cancelled, fork, join, put, race, take } from 'redux-saga/effects';
 import type { EventChannel, SagaIterator, Task } from 'redux-saga';
 import type { Defect } from '@4c-console/shared';
 import { createSSEChannel } from '../../api/sseChannel';
@@ -26,10 +26,19 @@ export function* streamDefectsSaga(): SagaIterator {
     yield put(streamSlice.actions.connected());
 
     const task: Task = yield fork(handleStreamMessages, channel);
+    const result: { stopped?: true; ended?: true } = yield race({
+      stopped: take(streamSlice.actions.stop.type),
+      ended: join(task),
+    });
 
-    yield take(streamSlice.actions.stop.type);
-    yield cancel(task);
     channel.close();
-    yield put(streamSlice.actions.disconnected());
+
+    if (result.stopped) {
+      yield cancel(task);
+      yield put(streamSlice.actions.disconnected());
+      continue;
+    }
+
+    yield put(streamSlice.actions.failed('检测流连接已断开，请检查后端 /api/stream'));
   }
 }

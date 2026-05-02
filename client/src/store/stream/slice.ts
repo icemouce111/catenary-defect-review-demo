@@ -47,7 +47,9 @@ export const streamSlice = createSlice({
       state.error = null;
     },
     failed(state, action: PayloadAction<string>) {
+      state.isActive = false;
       state.isConnecting = false;
+      state.connectedAt = null;
       state.error = action.payload;
     },
   },

@@ -16,7 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <ApolloProvider client={apolloClient}>
         <ConfigProvider locale={zhCN}>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
             <App />
           </BrowserRouter>
         </ConfigProvider>

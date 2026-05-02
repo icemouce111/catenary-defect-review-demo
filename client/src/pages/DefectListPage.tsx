@@ -51,7 +51,7 @@ export default function DefectListPage() {
         />
       )}
 
-      <Card className="table-card" bordered={false}>
+      <Card className="table-card" variant="borderless">
         <div className="table-toolbar">
           <Space wrap>
             <Select<RiskLevel>

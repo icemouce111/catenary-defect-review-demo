@@ -126,20 +126,21 @@ export default function DefectDetailPage() {
   const navigate = useNavigate();
   const defectsState = useAppSelector((state) => state.defects);
   const { highlightedId, list, status } = defectsState;
-  const defect = useMemo(() => list.find((item) => item.id === id), [id, list]);
+  const activeId = id ?? list[0]?.id ?? null;
+  const defect = useMemo(() => list.find((item) => item.id === activeId), [activeId, list]);
   const secondaryBoxes = useMemo(
     () => (defect ? secondaryBoxesFor(defect.bbox) : []),
     [defect],
   );
 
   useEffect(() => {
-    if (id) {
-      dispatch(defectsSlice.actions.setSelectedId(id));
+    if (activeId) {
+      dispatch(defectsSlice.actions.setSelectedId(activeId));
     }
     return () => {
       dispatch(defectsSlice.actions.setSelectedId(null));
     };
-  }, [dispatch, id]);
+  }, [activeId, dispatch]);
 
   useEffect(() => {
     if (!list.length && status === 'idle') {
@@ -155,11 +156,29 @@ export default function DefectDetailPage() {
     return () => window.clearTimeout(timer);
   }, [dispatch, highlightedId]);
 
-  if (!id) {
-    return <Empty description="缺少缺陷编号" />;
+  const isBootstrapping = list.length === 0 && (status === 'idle' || status === 'loading');
+
+  if (!activeId && isBootstrapping) {
+    return (
+      <div className="center-state">
+        <Spin size="large" />
+      </div>
+    );
   }
 
-  if (!defect && status === 'loading') {
+  if (!activeId) {
+    return (
+      <div className="center-state">
+        <Empty description="暂无候选缺陷记录">
+          <Button type="primary" onClick={() => dispatch(defectsSlice.actions.fetchRequested())}>
+            重新加载
+          </Button>
+        </Empty>
+      </div>
+    );
+  }
+
+  if (!defect && isBootstrapping) {
     return (
       <div className="center-state">
         <Spin size="large" />
@@ -235,6 +254,7 @@ export default function DefectDetailPage() {
             <Descriptions.Item label="采集时间">
               {dayjs(defect.detectedAt).format('YYYY-MM-DD HH:mm')}
             </Descriptions.Item>
+            <Descriptions.Item label="采集设备">4C检测车-01 / CH-2相机</Descriptions.Item>
           </Descriptions>
           <ReviewDecisionPanel defect={defect} />
         </aside>

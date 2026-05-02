@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { call, cancel, fork, put, take } from 'redux-saga/effects';
+import { call, cancel, fork, join, put, race, take } from 'redux-saga/effects';
 import type { EventChannel, Task } from 'redux-saga';
 import type { Defect } from '@4c-console/shared';
 import { createSSEChannel } from '../../api/sseChannel';
@@ -33,9 +33,36 @@ describe('stream sagas', () => {
     expect(generator.next().value).toEqual(call(createSSEChannel, '/api/stream'));
     expect(generator.next(channel).value).toEqual(put(streamSlice.actions.connected()));
     expect(generator.next().value).toEqual(fork(handleStreamMessages, channel));
-    expect(generator.next(task).value).toEqual(take(streamSlice.actions.stop.type));
-    expect(generator.next().value).toEqual(cancel(task));
+    expect(generator.next(task).value).toEqual(
+      race({
+        stopped: take(streamSlice.actions.stop.type),
+        ended: join(task),
+      }),
+    );
+    expect(generator.next({ stopped: true }).value).toEqual(cancel(task));
     expect(generator.next().value).toEqual(put(streamSlice.actions.disconnected()));
+    expect(channel.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks the stream failed when the SSE channel ends before stop', () => {
+    const channel = { close: vi.fn(), take: vi.fn() } as unknown as EventChannel<Defect>;
+    const task = { '@@redux-saga/TASK': true } as unknown as Task;
+    const generator = streamDefectsSaga();
+
+    generator.next();
+    generator.next();
+    generator.next(channel);
+    generator.next();
+
+    expect(generator.next(task).value).toEqual(
+      race({
+        stopped: take(streamSlice.actions.stop.type),
+        ended: join(task),
+      }),
+    );
+    expect(generator.next({ ended: true }).value).toEqual(
+      put(streamSlice.actions.failed('检测流连接已断开，请检查后端 /api/stream')),
+    );
     expect(channel.close).toHaveBeenCalledTimes(1);
   });
 

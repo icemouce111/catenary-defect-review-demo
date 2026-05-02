@@ -22,5 +22,13 @@
     "action": "已派单",
     "comment": "一级风险，已派发至工务A班组。",
     "timestamp": "2026-04-17T11:28:00.000Z"
+  },
+  {
+    "id": "LOG-jjH_zrch",
+    "defectId": "DEF-20260430-14ibQ",
+    "reviewer": "复核员 张工",
+    "action": "已确认",
+    "comment": "通过",
+    "timestamp": "2026-05-01T11:38:00.157Z"
   }
 ]

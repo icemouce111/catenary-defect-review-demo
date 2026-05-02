@@ -25,7 +25,7 @@ const initialState: ReviewState = {
   errors: {},
 };
 
-const reviewSlice = createSlice({
+export const reviewSlice = createSlice({
   name: 'review',
   initialState,
   reducers: {
@@ -33,23 +33,27 @@ const reviewSlice = createSlice({
       const { id, action: nextAction, comment } = action.payload;
       state.drafts[id] = { action: nextAction, comment };
     },
-    reviewSubmitted(state, action: PayloadAction<ReviewSubmitPayload>) {
+    submitReviewRequested(state, action: PayloadAction<ReviewSubmitPayload>) {
       state.submitting[action.payload.id] = true;
       state.errors[action.payload.id] = undefined;
     },
-    reviewSucceeded(state, action: PayloadAction<{ id: string }>) {
+    submitReviewSucceeded(state, action: PayloadAction<{ id: string }>) {
       delete state.submitting[action.payload.id];
       delete state.errors[action.payload.id];
       delete state.drafts[action.payload.id];
     },
-    reviewFailed(state, action: PayloadAction<{ id: string; error: string }>) {
+    submitReviewFailed(state, action: PayloadAction<{ id: string; error: string }>) {
       delete state.submitting[action.payload.id];
       state.errors[action.payload.id] = action.payload.error;
     },
   },
 });
 
-export const { reviewDraftChanged, reviewFailed, reviewSubmitted, reviewSucceeded } =
-  reviewSlice.actions;
+export const {
+  reviewDraftChanged,
+  submitReviewFailed,
+  submitReviewRequested,
+  submitReviewSucceeded,
+} = reviewSlice.actions;
 
 export default reviewSlice.reducer;

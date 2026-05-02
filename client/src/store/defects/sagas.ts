@@ -8,14 +8,7 @@ import {
   normalizeDefect,
 } from '../../api/queries';
 import { toGraphQLRisk, toGraphQLStatus } from '../../api/graphqlEnums';
-import {
-  defectsFetchFailed,
-  defectsFetchRequested,
-  defectsFetchStarted,
-  defectsLoaded,
-  setRiskFilter,
-  setStatusFilter,
-} from './slice';
+import { defectsSlice } from './slice';
 import type { RootState } from '..';
 
 interface DefectsQueryResult {
@@ -30,10 +23,6 @@ const selectDefectFilter = (state: RootState) => state.defects.filter;
 
 export function* fetchDefectsSaga(action?: { type: string }): SagaIterator {
   try {
-    if (action?.type !== defectsFetchRequested.type) {
-      yield put(defectsFetchStarted());
-    }
-
     const filter: ReturnType<typeof selectDefectFilter> = yield select(selectDefectFilter);
     const response: { data?: DefectsQueryResult } = yield call([apolloClient, apolloClient.query], {
       query: DEFECTS_QUERY,
@@ -44,9 +33,11 @@ export function* fetchDefectsSaga(action?: { type: string }): SagaIterator {
       fetchPolicy: 'network-only',
     });
 
-    yield put(defectsLoaded((response.data?.defects ?? []).map(normalizeDefect)));
+    yield put(defectsSlice.actions.fetchSucceeded((response.data?.defects ?? []).map(normalizeDefect)));
   } catch (error) {
-    yield put(defectsFetchFailed(error instanceof Error ? error.message : '缺陷列表加载失败'));
+    yield put(
+      defectsSlice.actions.fetchFailed(error instanceof Error ? error.message : '缺陷列表加载失败'),
+    );
   }
 }
 
@@ -61,6 +52,6 @@ export function* fetchDefectById(id: string): SagaIterator {
 }
 
 export function* defectsSaga(): SagaIterator {
-  yield takeLatest(defectsFetchRequested.type, fetchDefectsSaga);
-  yield takeLatest([setRiskFilter.type, setStatusFilter.type], fetchDefectsSaga);
+  yield takeLatest(defectsSlice.actions.fetchRequested.type, fetchDefectsSaga);
+  yield takeLatest(defectsSlice.actions.setFilter.type, fetchDefectsSaga);
 }

@@ -1,13 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Defect } from '@4c-console/shared';
-import reducer, {
-  defectReviewCommitted,
-  defectReviewOptimistic,
-  defectReviewRollback,
-  defectStreamReceived,
-  defectsLoaded,
-  setRiskFilter,
-} from './slice';
+import reducer, { defectsSlice } from './slice';
 
 const makeDefect = (id: string, status: Defect['status'] = '待复核'): Defect => ({
   id,
@@ -27,43 +20,46 @@ const makeDefect = (id: string, status: Defect['status'] = '待复核'): Defect 
 
 describe('defects slice', () => {
   it('prepends streamed defects, marks the newest id, and avoids duplicates', () => {
-    const initial = reducer(undefined, defectsLoaded([makeDefect('DEF-001')]));
+    const initial = reducer(undefined, defectsSlice.actions.fetchSucceeded([makeDefect('DEF-001')]));
 
-    const withNew = reducer(initial, defectStreamReceived(makeDefect('DEF-002')));
+    const withNew = reducer(initial, defectsSlice.actions.prependDefect(makeDefect('DEF-002')));
     expect(withNew.list.map((defect) => defect.id)).toEqual(['DEF-002', 'DEF-001']);
     expect(withNew.highlightedId).toBe('DEF-002');
 
-    const withDuplicate = reducer(withNew, defectStreamReceived(makeDefect('DEF-002')));
+    const withDuplicate = reducer(withNew, defectsSlice.actions.prependDefect(makeDefect('DEF-002')));
     expect(withDuplicate.list.map((defect) => defect.id)).toEqual(['DEF-002', 'DEF-001']);
   });
 
-  it('keeps list data while updating risk filters', () => {
-    const initial = reducer(undefined, defectsLoaded([makeDefect('DEF-001')]));
-    const next = reducer(initial, setRiskFilter('一级'));
+  it('keeps list data while updating filters', () => {
+    const initial = reducer(undefined, defectsSlice.actions.fetchSucceeded([makeDefect('DEF-001')]));
+    const next = reducer(initial, defectsSlice.actions.setFilter({ riskLevel: '一级' }));
 
     expect(next.filter).toEqual({ riskLevel: '一级' });
     expect(next.list).toHaveLength(1);
-    expect(next.status).toBe('idle');
+    expect(next.status).toBe('loading');
   });
 
-  it('rolls back an optimistic review to the prior defect state', () => {
-    const initial = reducer(undefined, defectsLoaded([makeDefect('DEF-001')]));
+  it('rolls back an optimistic review to the prior status', () => {
+    const initial = reducer(undefined, defectsSlice.actions.fetchSucceeded([makeDefect('DEF-001')]));
     const optimistic = reducer(
       initial,
-      defectReviewOptimistic({ id: 'DEF-001', action: '已确认', comment: '可见裂损' }),
+      defectsSlice.actions.updateDefectStatusOptimistic({ id: 'DEF-001', status: '已确认' }),
     );
 
     expect(optimistic.list[0]?.status).toBe('已确认');
 
-    const rolledBack = reducer(optimistic, defectReviewRollback({ id: 'DEF-001' }));
+    const rolledBack = reducer(
+      optimistic,
+      defectsSlice.actions.rollbackDefectStatus({ id: 'DEF-001', previousStatus: '待复核' }),
+    );
     expect(rolledBack.list[0]?.status).toBe('待复核');
   });
 
   it('replaces optimistic data with committed server data', () => {
-    const initial = reducer(undefined, defectsLoaded([makeDefect('DEF-001')]));
+    const initial = reducer(undefined, defectsSlice.actions.fetchSucceeded([makeDefect('DEF-001')]));
     const optimistic = reducer(
       initial,
-      defectReviewOptimistic({ id: 'DEF-001', action: '已确认', comment: '可见裂损' }),
+      defectsSlice.actions.updateDefectStatusOptimistic({ id: 'DEF-001', status: '已确认' }),
     );
     const committedDefect = makeDefect('DEF-001', '已确认');
     committedDefect.reviewLogs = [
@@ -77,8 +73,8 @@ describe('defects slice', () => {
       },
     ];
 
-    const committed = reducer(optimistic, defectReviewCommitted(committedDefect));
+    const committed = reducer(optimistic, defectsSlice.actions.upsertDefect(committedDefect));
     expect(committed.list[0]?.reviewLogs).toHaveLength(1);
-    expect(committed.optimisticById).toEqual({});
+    expect(committed.list[0]?.status).toBe('已确认');
   });
 });
